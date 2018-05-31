@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>{% block pageTitle %}Wastebin: Kitura-Powered Pastebin{% endblock %}</title>
+<!--     <link rel="stylesheet" href="{{ resourceDir|default:"" }}/styles.css" /> -->
+  <style type="text/css">
+    html {
+      background-color: black;
+      color: #ccc;
+    }
+  </style>
+  </head>
+  <body>
+    {% block pageBody %}{% endblock %}
+  </body>
+</html>
