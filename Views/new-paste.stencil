@@ -3,10 +3,10 @@
 {% block pageBody %}
 
 <form action="new" method="post">
-  <textarea name="body">{{ paste.raw|default:"" }}</textarea>
+  <textarea name="body" rows="10" id="body">{{ paste.raw|default:"" }}</textarea>
   <select name="mode">
     {% for mode in modes %}
-    <option value="{{ modes.sysname }}"{% if paste.mode == mode.sysname %} selected="selected"{% endif %}>{{ mode.name }}</option>
+    <option value="{{ mode.sysname }}"{% if paste.mode == mode.sysname %} selected="selected"{% endif %}>{{ mode.name }}</option>
     {% endfor %}
   </select>
   <input type="submit" />

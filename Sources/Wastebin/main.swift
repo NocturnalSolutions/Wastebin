@@ -37,8 +37,16 @@ let modes = [
     ["sysname": "xml", "name": "XML"],
 ] as Any
 
+let resourceDir = "http://localhost:8081/"
+
+let defaultCtxt: [String: Any] = [
+    "modes": modes,
+    "resourceDir": resourceDir
+]
+
 r.get("/") { request, response, next in
-    try response.render("new-paste", context: ["modes": modes])
+    response.headers.setType("text/html", charset: "utf-8")
+    try response.render("new-paste", context: defaultCtxt)
     next()
 }
 
@@ -51,8 +59,9 @@ r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
 
     do {
         let paste = try Paste.load(fromUuid: uuid)
-        response.headers.setType("text/plain", charset: "utf-8")
-        response.send(paste.raw)
+        response.headers.setType("text/html", charset: "utf-8")
+        let context: [String: Any] = ["paste": paste]
+        try response.render("paste", context: context.merging(defaultCtxt) { _, new in new })
     }
     catch {
         switch error {

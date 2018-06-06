@@ -1,0 +1,11 @@
+{% extends "layout.stencil" %}
+
+{% block pageTitle %}Paste {{ paste.uuid }}{% endblock %}
+
+{% block pageBody %}
+
+<pre><code class="lang-{{ paste.mode }}">
+{{ paste.raw }}
+</code></pre>
+
+{% endblock %}

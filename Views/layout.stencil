@@ -3,15 +3,62 @@
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <title>{% block pageTitle %}Wastebin: Kitura-Powered Pastebin{% endblock %}</title>
-<!--     <link rel="stylesheet" href="{{ resourceDir|default:"" }}/styles.css" /> -->
-  <style type="text/css">
-    html {
-      background-color: black;
-      color: #ccc;
-    }
-  </style>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/obsidian.min.css" />
+    {% if resourceDir %}
+    <link rel="stylesheet" href="{{ resourceDir }}styles.css" />
+    <script src="{{resourceDir}}highlight/highlight.pack.js" charset="utf-8"></script>
+    {% endif %}
   </head>
   <body>
+    <header>
+      <h1><a href="/">Wastebin</a></h1>
+    </header>
     {% block pageBody %}{% endblock %}
   </body>
+  <script>
+    hljs.initHighlightingOnLoad();
+    
+    function fitTextarea() {
+      var textarea = document.getElementsByTagName("textarea")[0];
+      if (textarea) {
+        var allHeight = window.innerHeight;
+        var hdrHeight = document.getElementsByTagName("header")[0].scrollHeight;
+        var taHeight = allHeight - hdrHeight - 100;
+        textarea.style.height = taHeight + "px";
+      }
+    }
+    
+    var resizeTimer;
+    function throttleFitTextarea() {
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+      resizeTimer = setTimeout(function() {
+        resizeTimer = null;
+        console.log("Timer triggered");
+        fitTextarea();
+      }, 100);
+    }
+
+    var textarea = document.getElementsByTagName("textarea")[0];
+    if (textarea) {
+      var hiliteTimer;
+      document.addEventListener("DOMContentLoaded", fitTextarea);
+      textarea.addEventListener("keyup", function() {
+        if (!hiliteTimer) {
+          hiliteTimer = setTimeout(function() {
+            hiliteTimer = null;
+            var code = textarea.value;
+            var hilightResult = hljs.highlightAuto(code);
+            var lang = hilightResult.language;
+            if (lang) {
+              document.getElementsByName("mode")[0].value = lang;
+            }
+          }, 1000);
+        }
+      });
+      window.addEventListener("resize", throttleFitTextarea);
+    }
+  </script>
 </html>
