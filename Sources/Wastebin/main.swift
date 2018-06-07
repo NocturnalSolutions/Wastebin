@@ -21,6 +21,8 @@ config.load([
     "port": nil,
     // Resource path (for CSS/JS files, etc)
     "resource-path": "http://localhost:8081/",
+    // Maximum paste body size in chars
+    "max-size": 8192
     ])
 
 // Load CLI arguments first because an overriding config file path may have been
@@ -127,7 +129,28 @@ r.post("/new") { request, response, next in
         next()
         return
     }
+
+    guard let maxSize = config["max-size"] as? Int else {
+        try response.status(.internalServerError).end()
+        next()
+        return
+    }
+
     let newPaste = Paste(raw: body, mode: mode)
+
+    let pasteBodySize = body.count
+    guard pasteBodySize <= maxSize else {
+        let context: [String: Any] = [
+            "paste": newPaste,
+            "error": "pasteBodyCount",
+            "pasteBodyLimit": maxSize,
+            "pasteBodySize": pasteBodySize,
+        ]
+        try response.render("new-paste", context: context.merging(defaultCtxt) { _, new in new })
+        next()
+        return
+    }
+
     do {
         try newPaste.save()
         try response.redirect("/" + newPaste.uuid.uuidString)
@@ -136,7 +159,6 @@ r.post("/new") { request, response, next in
         try response.status(.unprocessableEntity).end()
     }
     next()
-    return
 }
 
 // Install database for a new site

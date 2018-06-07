@@ -2,6 +2,16 @@
 
 {% block pageBody %}
 
+{% if error %}
+<div class="error">
+  {% if error == "pasteBodyCount" %}
+    The length of your paste, {{ pasteBodySize }} characters, exceeds the maximum limit of {{ pasteBodyLimit }} characters.
+  {% else %}
+    An error occurred and I haven&rsquo;t written a proper error message for it, which is pretty terrible. Please let me know.
+  {% endif %}
+</div>
+{% endif %}
+
 <form action="new" method="post">
   <textarea name="body" rows="10" id="body">{{ paste.raw|default:"" }}</textarea>
   <select name="mode">
