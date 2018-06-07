@@ -5,6 +5,8 @@ import SwiftKuery
 import KituraStencil
 import Configuration
 
+// MARK: Configuration Initialization
+
 let config = ConfigurationManager()
 
 // Initial config
@@ -35,8 +37,7 @@ config.load(.commandLineArguments)
 // Initialize the database connection
 guard let dbPath = config["database-path"] as? String else {
     print("Failure opening database: Can't determine database file path")
-//    exit(ExitCodes.noDatabaseFile.rawValue)
-    exit(1)
+    exit(ExitCodes.noDatabaseFile.rawValue)
 }
 
 let nsDbPath = NSString(string: dbPath).expandingTildeInPath
@@ -47,7 +48,7 @@ let dbCxn = SQLiteConnection(filename: expandedDbPath)
 dbCxn.connect() { error in
     if let error = error {
         print("Failure opening database: \(error.description)")
-        exit(1)
+        exit(ExitCodes.noDatabaseFile.rawValue)
     }
 }
 
@@ -78,18 +79,22 @@ let defaultCtxt: [String: Any] = [
     "resourceDir": config["resource-path"] as? String as Any,
 ]
 
+// MARK: Router Initialization
+
 let r = Router()
 r.setDefault(templateEngine: StencilTemplateEngine())
 
 // Store the regex for a UUID for later reference
 let uuidPattern = "[\\dA-F]{8}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{12}"
 
+// Front page: Show a form for a new paste
 r.get("/") { request, response, next in
     response.headers.setType("text/html", charset: "utf-8")
     try response.render("new-paste", context: defaultCtxt)
     next()
 }
 
+// Display a paste
 r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
     guard let uuid = request.parameters["uuid"] else {
         try response.status(.notFound).end()
@@ -114,6 +119,7 @@ r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
     next()
 }
 
+// Submit handler for new paste
 r.post("/new", middleware: BodyParserMultiValue())
 r.post("/new") { request, response, next in
     guard let postBody = request.body?.asURLEncodedMultiValue, let body = postBody["body"]?.first, let mode = postBody["mode"]?.first else {
@@ -132,7 +138,8 @@ r.post("/new") { request, response, next in
     next()
     return
 }
-    
+
+// Install database for a new site
 r.get("/install") { request, response, next in
     let pasteTable = PasteTable()
     pasteTable.create(connection: dbCxn) { queryResult in
@@ -145,6 +152,8 @@ r.get("/install") { request, response, next in
         }
     }
 }
+
+// MARK: Start Kitura
 
 let port = config["port"] as? Int ?? 8080
 Kitura.addHTTPServer(onPort: port, with: r)
