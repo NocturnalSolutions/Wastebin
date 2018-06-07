@@ -17,6 +17,10 @@ struct Paste {
     let date: Date?
     let raw: String
     let mode: String
+    // Damn! Stencil doesn't work with computed properties.
+//    public var sanitized: String {
+//        return raw.webSanitize()
+//    }
 
     enum PasteError: Error {
         case missingFieldOnDbRow

@@ -5,7 +5,7 @@
 {% block pageBody %}
 
 <pre><code class="lang-{{ paste.mode }}">
-{{ paste.raw }}
+{{ paste.raw|webSanitize }}
 </code></pre>
 
 {% endblock %}

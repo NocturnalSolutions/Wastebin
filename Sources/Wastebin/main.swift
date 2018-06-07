@@ -4,6 +4,7 @@ import SwiftKuerySQLite
 import SwiftKuery
 import KituraStencil
 import Configuration
+import Stencil
 
 // MARK: Configuration Initialization
 
@@ -84,7 +85,19 @@ let defaultCtxt: [String: Any] = [
 // MARK: Router Initialization
 
 let r = Router()
-r.setDefault(templateEngine: StencilTemplateEngine())
+let ext = Extension()
+// I'd rather do sanitizing via a computed property on the Paste object, but
+// Stencil doesn't work with computed properties:
+// https://github.com/stencilproject/Stencil/issues/219
+// So as a workaround, implement our desired functionality using a Stencil
+// filter.
+ext.registerFilter("webSanitize") { value in
+    guard let value = value else {
+        return "" as Any?
+    }
+    return String(describing: value).webSanitize() as Any?
+}
+r.setDefault(templateEngine: StencilTemplateEngine(extension: ext))
 
 // Store the regex for a UUID for later reference
 let uuidPattern = "[\\dA-F]{8}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{12}"
