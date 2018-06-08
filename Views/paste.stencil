@@ -8,4 +8,9 @@
 {{ paste.raw|webSanitize }}
 </code></pre>
 
+<form method="post" action="/{{ paste.uuid}}/delete">
+  <input type="password" name="password" />
+  <input type="submit" value="Delete" />
+</form>
+
 {% endblock %}

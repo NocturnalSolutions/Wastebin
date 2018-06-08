@@ -23,7 +23,9 @@ config.load([
     // Resource path (for CSS/JS files, etc)
     "resource-path": "http://localhost:8081/",
     // Maximum paste body size in chars
-    "max-size": 8192
+    "max-size": 8192,
+    // Password for administration tasks
+    "password": nil
     ])
 
 // Load CLI arguments first because an overriding config file path may have been
@@ -41,6 +43,12 @@ config.load(.commandLineArguments)
 guard let dbPath = config["database-path"] as? String else {
     print("Failure opening database: Can't determine database file path")
     exit(ExitCodes.noDatabaseFile.rawValue)
+}
+
+// Ensure a password is defined for admin tasks {
+guard let adminPassword = config["password"] as? String else {
+    print("Define an administration password!")
+    exit(ExitCodes.noPassword.rawValue)
 }
 
 let nsDbPath = NSString(string: dbPath).expandingTildeInPath
@@ -133,6 +141,35 @@ r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
         response.headers.setType("text/html", charset: "utf-8")
         let context: [String: Any] = ["paste": paste]
         try response.render("paste", context: context.merging(defaultCtxt) { _, new in new })
+    }
+    catch {
+        switch error {
+        case Paste.PasteError.notFoundForUuid:
+            try response.status(.notFound).end()
+        default:
+            try response.status(.internalServerError).end()
+        }
+    }
+    next()
+}
+
+// Delete a paste
+r.post("/:uuid(" + uuidPattern + ")/delete", middleware: BodyParserMultiValue())
+r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
+    guard let postBody = request.body?.asURLEncodedMultiValue, let submittedPw = postBody["password"]?.first, submittedPw == adminPassword else {
+        try response.status(.forbidden).end()
+        next()
+        return
+    }
+    guard let uuid = request.parameters["uuid"] else {
+        try response.status(.notFound).end()
+        next()
+        return
+    }
+    do {
+        let paste = try Paste.load(fromUuid: uuid)
+        try paste.delete()
+        try response.redirect("/")
     }
     catch {
         switch error {

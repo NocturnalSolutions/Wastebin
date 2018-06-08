@@ -1,4 +1,4 @@
-html, textarea {
+html, textarea, input[type=password], input[type=text] {
   background-color: black;
   color: #ccc;
 }

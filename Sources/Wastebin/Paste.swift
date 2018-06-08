@@ -162,4 +162,19 @@ struct Paste {
             throw dbError
         }
     }
+
+    func delete() throws {
+        let pasteTable = PasteTable()
+        let d = Delete(from: pasteTable)
+        .where(pasteTable.uuid == uuid.uuidString)
+        var dbError: Error?
+        dbCxn.execute(query: d) { queryResult in
+            if let error = queryResult.asError {
+                dbError = error
+            }
+        }
+        if let dbError = dbError {
+            throw dbError
+        }
+    }
 }
