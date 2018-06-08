@@ -1,0 +1,26 @@
+{% extends "layout.stencil" %}
+
+{% block pageTitle %}Paste List Page {{ currentPage }}{% endblock %}
+
+{% block pageBody %}
+
+{% for paste in pastes %}
+  <div class="paste-in-list">
+    <a href="/{{ paste.uuid }}">{{ paste.uuid }}</a> - {{ paste.date }}<br />
+    <pre>{{ paste.raw|truncAndSanitize }}</pre>
+  </div>
+{% endfor %}
+
+<footer>
+  <ol class="pager">
+  {% for page in pages %}
+    {% if page == currentPage %}
+      <li>{{ page }}</li>
+    {% else %}
+      <li><a href="/list?page={{ page }}">{{ page }}</a></li>
+    {% endif %}
+  {% endfor %}
+  </ol>
+</footer>
+
+{% endblock %}

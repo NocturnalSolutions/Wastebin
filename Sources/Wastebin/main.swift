@@ -97,6 +97,17 @@ ext.registerFilter("webSanitize") { value in
     }
     return String(describing: value).webSanitize() as Any?
 }
+ext.registerFilter("truncAndSanitize") { value in
+    guard let value = value else {
+        return "" as Any?
+    }
+    let string = String(describing: value)
+    if string.count > 50 {
+        let idx = string.index(string.startIndex, offsetBy: 200)
+        return String(string.prefix(through: idx)).webSanitize()
+    }
+    return string.webSanitize()
+}
 r.setDefault(templateEngine: StencilTemplateEngine(extension: ext))
 
 // Store the regex for a UUID for later reference
@@ -172,6 +183,33 @@ r.post("/new") { request, response, next in
         try response.status(.unprocessableEntity).end()
     }
     next()
+}
+
+// List posts
+r.get("/list") { request, response, next in
+    let page: Int
+    if let pageStr = request.queryParametersMultiValues["page"]?.first {
+        page = Int(pageStr) ?? 1
+    }
+    else {
+        page = 1
+    }
+    let startFrom = (page - 1) * Paste.pastesPerListPage
+    let pastesToShow = Paste.loadList(from: startFrom)
+
+    // Build pager
+    let pasteCount = Paste.pasteCount()
+    let pageCount = Int(ceil(Float(pasteCount) / Float(Paste.pastesPerListPage)))
+    let pages = [Int](1...pageCount)
+
+    let context: [String: Any] = [
+        "pastes": pastesToShow,
+        "pages": pages,
+        "currentPage": page,
+        "pasteCount": pasteCount,
+        ]
+    response.headers.setType("text/plain", charset: "utf-8")
+    try response.render("list", context: context.merging(defaultCtxt) { _, new in new })
 }
 
 // Install database for a new site

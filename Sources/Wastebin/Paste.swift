@@ -22,6 +22,8 @@ struct Paste {
 //        return raw.webSanitize()
 //    }
 
+    static let pastesPerListPage = 50
+
     enum PasteError: Error {
         case missingFieldOnDbRow
         case castingFailed
@@ -90,6 +92,51 @@ struct Paste {
         else {
             throw PasteError.notFoundForUuid
         }
+    }
+
+    /// Load a list of pastes
+    static func loadList(from: Int) -> [Paste] {
+        let pasteTable = PasteTable()
+        // mid() currently broken in Swift-Kuery-SQLite
+//        let q = Select(pasteTable.uuid, pasteTable.date, mid(pasteTable.raw, start: 0, length: 50).as("raw"), from: pasteTable)
+        let q = Select(pasteTable.columns, from: pasteTable)
+        .order(by: .DESC(pasteTable.date))
+        .offset(from)
+        .limit(to: pastesPerListPage)
+
+        var result: [Paste] = []
+        dbCxn.execute(query: q) { queryResult in
+            if let rows = queryResult.asRows {
+                for row in rows {
+                    do {
+                        let paste = try Paste(fromRow: row)
+                        result.append(paste)
+                    }
+                    catch {
+                        // Hmm, log something, I guess
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    /// Count total pastes
+    static func pasteCount() -> Int {
+        let pasteTable = PasteTable()
+        let q = Select(count(pasteTable.uuid).as("count"), from: pasteTable)
+        var pasteCount = 0
+        dbCxn.execute(query: q) {queryResult in
+            // Awkward multi-level unwrapping
+            if let result = queryResult.asRows,
+                let row = result.first,
+                let value = row["count"],
+                let count = value
+            {
+                pasteCount = Int(String(describing: count)) ?? 0
+            }
+        }
+        return pasteCount
     }
 
     /// Save an unsaved paste
