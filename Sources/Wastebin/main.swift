@@ -110,8 +110,12 @@ ext.registerFilter("truncAndSanitize") { value in
         return "" as Any?
     }
     let string = String(describing: value)
-    if string.count > 50 {
-        let idx = string.index(string.startIndex, offsetBy: 200)
+
+    // Truncation length. Should this be configurable?
+    let truncLen = 200
+
+    if string.count > truncLen {
+        let idx = string.index(string.startIndex, offsetBy: truncLen)
         return String(string.prefix(through: idx)).webSanitize()
     }
     return string.webSanitize()
