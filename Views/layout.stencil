@@ -25,7 +25,8 @@
   </body>
   <script>
     hljs.initHighlightingOnLoad();
-    
+  
+    // Make the textarea fit the window
     function fitTextarea() {
       var textarea = document.getElementsByTagName("textarea")[0];
       if (textarea) {
@@ -35,7 +36,9 @@
         textarea.style.height = taHeight + "px";
       }
     }
-    
+
+    // Tell the textarea to fit the window after it is resized; timer to
+    // throttle things
     var resizeTimer;
     function throttleFitTextarea() {
       if (resizeTimer) {
@@ -48,23 +51,32 @@
       }, 100);
     }
 
+    // Kick off the resizing and such if the textarea is actually on the page
     var textarea = document.getElementsByTagName("textarea")[0];
     if (textarea) {
       var hiliteTimer;
+      var modeManuallySet = false;
+      var modeMenu = document.getElementsByName("mode")[0];
       document.addEventListener("DOMContentLoaded", fitTextarea);
       textarea.addEventListener("keyup", function() {
-        if (!hiliteTimer) {
+        if (!hiliteTimer && !modeManuallySet) {
           hiliteTimer = setTimeout(function() {
             hiliteTimer = null;
             var code = textarea.value;
             var hilightResult = hljs.highlightAuto(code);
             var lang = hilightResult.language;
-            if (lang) {
-              document.getElementsByName("mode")[0].value = lang;
+            if (lang && modeMenu) {
+              modeMenu.value = lang;
             }
           }, 1000);
         }
       });
+      if (modeMenu) {
+        modeMenu.addEventListener("change", function() {
+          console.log("Manual change?");
+          modeManuallySet = true;
+        });
+      }
       window.addEventListener("resize", throttleFitTextarea);
     }
   </script>
