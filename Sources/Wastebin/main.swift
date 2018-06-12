@@ -64,8 +64,8 @@ dbCxn.connect() { error in
 }
 
 // Hard code syntax mode info for now. Maybe do this in config later?
-// This is "Any" because that's what Stencil wants and we're not really using
-// it elsewhere.
+// There are certainly better data structures we could use for this, but this
+// one works well for Stencil. Do better later, though.
 let modes = [
     ["sysname": "objectivec", "name": "Objective-C"],
     ["sysname": "django", "name": "Django"],
@@ -82,11 +82,11 @@ let modes = [
     ["sysname": "sql", "name": "SQL"],
     ["sysname": "swift", "name": "Swift"],
     ["sysname": "xml", "name": "XML"],
-] as Any
+]
 
 // Default context array for Stencil
 let defaultCtxt: [String: Any] = [
-    "modes": modes,
+    "modes": modes as Any,
     "resourceDir": config["resource-path"] as? String as Any,
 ]
 
@@ -189,7 +189,7 @@ r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
 // Submit handler for new paste
 r.post("/new", middleware: BodyParserMultiValue())
 r.post("/new") { request, response, next in
-    guard let postBody = request.body?.asURLEncodedMultiValue, let body = postBody["body"]?.first, let mode = postBody["mode"]?.first else {
+    guard let postBody = request.body?.asURLEncodedMultiValue, let body = postBody["body"]?.first, let postedMode = postBody["mode"]?.first else {
         try response.status(.unprocessableEntity).end()
         next()
         return
@@ -201,7 +201,22 @@ r.post("/new") { request, response, next in
         return
     }
 
-    let newPaste = Paste(raw: body, mode: mode)
+    // Make sure the mode is legitimate
+    var existsInModes = false
+    for mode in modes {
+        if mode["sysname"] == postedMode {
+            existsInModes = true
+            break
+        }
+    }
+
+    guard existsInModes == true else {
+        try response.status(.unprocessableEntity).end()
+        next()
+        return
+    }
+
+    let newPaste = Paste(raw: body, mode: postedMode)
 
     let pasteBodySize = body.count
     guard pasteBodySize <= maxSize else {
