@@ -20,7 +20,7 @@
     </header>
     {% block pageBody %}{% endblock %}
     <footer id="global-footer">
-      Wastebin is a pastebin written by <a href="http://nocturnal.solutions">Nocturnal</a>. Please contact me if you find any illegal material on this site. Written in <a href="https://swift.org">Swift</a> for the <a href="https://www.kitura.io">Kitura</a> web framework.
+      Wastebin is a pastebin written by <a href="http://nocturnal.solutions">Nocturnal</a>. <a href="https://github.com/NocturnalSolutions/Wastebin">Scrutinize the code on GitHub!</a> Please contact me if you find any illegal material on this site. Written in <a href="https://swift.org">Swift</a> for the <a href="https://www.kitura.io">Kitura</a> web framework.
     </footer>
   </body>
   <script>
