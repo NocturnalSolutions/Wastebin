@@ -135,7 +135,7 @@ r.get("/") { request, response, next in
 // Display a paste
 r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
     guard let uuid = request.parameters["uuid"] else {
-        try response.status(.notFound).end()
+        try response.send(status: .notFound).end()
         next()
         return
     }
@@ -149,9 +149,9 @@ r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
     catch {
         switch error {
         case Paste.PasteError.notFoundForUuid:
-            try response.status(.notFound).end()
+            try response.send(status: .notFound).end()
         default:
-            try response.status(.internalServerError).end()
+            try response.send(status: .internalServerError).end()
         }
     }
     next()
@@ -161,12 +161,12 @@ r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
 r.post("/:uuid(" + uuidPattern + ")/delete", middleware: BodyParserMultiValue())
 r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
     guard let postBody = request.body?.asURLEncodedMultiValue, let submittedPw = postBody["password"]?.first, submittedPw == adminPassword else {
-        try response.status(.forbidden).end()
+        try response.send(status: .forbidden).end()
         next()
         return
     }
     guard let uuid = request.parameters["uuid"] else {
-        try response.status(.notFound).end()
+        try response.send(status: .notFound).end()
         next()
         return
     }
@@ -178,9 +178,9 @@ r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
     catch {
         switch error {
         case Paste.PasteError.notFoundForUuid:
-            try response.status(.notFound).end()
+            try response.send(status: .notFound).end()
         default:
-            try response.status(.internalServerError).end()
+            try response.send(status: .internalServerError).end()
         }
     }
     next()
@@ -190,13 +190,13 @@ r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
 r.post("/new", middleware: BodyParserMultiValue())
 r.post("/new") { request, response, next in
     guard let postBody = request.body?.asURLEncodedMultiValue, let body = postBody["body"]?.first, let postedMode = postBody["mode"]?.first else {
-        try response.status(.unprocessableEntity).end()
+        try response.send(status: .unprocessableEntity).end()
         next()
         return
     }
 
     guard let maxSize = config["max-size"] as? Int else {
-        try response.status(.internalServerError).end()
+        try response.send(status: .internalServerError).end()
         next()
         return
     }
@@ -211,7 +211,7 @@ r.post("/new") { request, response, next in
     }
 
     guard existsInModes == true else {
-        try response.status(.unprocessableEntity).end()
+        try response.send(status: .unprocessableEntity).end()
         next()
         return
     }
@@ -236,7 +236,7 @@ r.post("/new") { request, response, next in
         try response.redirect("/" + newPaste.uuid.uuidString)
     }
     catch {
-        try response.status(.unprocessableEntity).end()
+        try response.send(status: .unprocessableEntity).end()
     }
     next()
 }
@@ -277,9 +277,10 @@ r.get("/install") { request, response, next in
             response.send("Created table \(pasteTable.tableName)\n")
         }
         else {
-            response.status(.internalServerError)
+            _ = response.send(status: .internalServerError)
         }
     }
+    next()
 }
 
 // MARK: Start Kitura
