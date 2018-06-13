@@ -8,6 +8,9 @@ Includes [highlight.js](https://highlightjs.org) for client-side syntax highligh
 
 ## To Do
 
+- TESTS
 - User flagging of naughty pastes
 - Self-destructing pastes that delete after 1 hour, 1 day, 1 week, etc.
+- Raw view
+- Formatted (translated to HTML) Markdown view
 
