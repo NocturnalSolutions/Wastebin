@@ -31,14 +31,22 @@ struct Paste {
         case notFoundForUuid
     }
 
+    
+    static var dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
     /// Initialize a paste from a database row
     init(fromRow row: [String: Any?]) throws {
         guard let uuidStr = row["uuid"] as? String, let dateStr = row["date"] as? String, let raw = row["raw"] as? String, let mode = row["mode"] as? String else {
             throw PasteError.missingFieldOnDbRow
         }
 
-        let dateFmt = ISO8601DateFormatter()
-        guard let uuid = UUID(uuidString: uuidStr), let date = dateFmt.date(from: dateStr) else {
+        guard let uuid = UUID(uuidString: uuidStr), let date = Paste.dateFormatter.date(from: dateStr) else {
             throw PasteError.castingFailed
         }
 
@@ -68,7 +76,7 @@ struct Paste {
         var loadedPaste: Paste?
         var dbError: Error?
 
-        dbCxn.execute(query: q) { queryResult in
+        WastebinApp.dbCxn?.execute(query: q) { queryResult in
             if let rows = queryResult.asRows, let row = rows.first {
                 do {
                     let paste = try Paste(fromRow: row)
@@ -105,7 +113,7 @@ struct Paste {
         .limit(to: pastesPerListPage)
 
         var result: [Paste] = []
-        dbCxn.execute(query: q) { queryResult in
+        WastebinApp.dbCxn?.execute(query: q) { queryResult in
             if let rows = queryResult.asRows {
                 for row in rows {
                     do {
@@ -126,7 +134,7 @@ struct Paste {
         let pasteTable = PasteTable()
         let q = Select(count(pasteTable.uuid).as("count"), from: pasteTable)
         var pasteCount = 0
-        dbCxn.execute(query: q) {queryResult in
+        WastebinApp.dbCxn?.execute(query: q) {queryResult in
             // Awkward multi-level unwrapping
             if let result = queryResult.asRows,
                 let row = result.first,
@@ -147,12 +155,12 @@ struct Paste {
         let pasteTable = PasteTable()
         let i = Insert(into: pasteTable, valueTuples: [
             (pasteTable.uuid, uuid.uuidString),
-            (pasteTable.date, ISO8601DateFormatter().string(from: Date())),
+            (pasteTable.date, Paste.dateFormatter.string(from: Date())),
             (pasteTable.raw, raw),
             (pasteTable.mode, mode)
         ])
         var dbError: Error?
-        dbCxn.execute(query: i) { queryResult in
+        WastebinApp.dbCxn?.execute(query: i) { queryResult in
             if let error = queryResult.asError {
                 dbError = error
             }
@@ -168,7 +176,7 @@ struct Paste {
         let d = Delete(from: pasteTable)
         .where(pasteTable.uuid == uuid.uuidString)
         var dbError: Error?
-        dbCxn.execute(query: d) { queryResult in
+        WastebinApp.dbCxn?.execute(query: d) { queryResult in
             if let error = queryResult.asError {
                 dbError = error
             }

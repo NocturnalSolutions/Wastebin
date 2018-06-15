@@ -2,9 +2,100 @@ import Foundation
 import Kitura
 import KituraStencil
 import Stencil
+import SwiftKuerySQLite
+import SwiftKuery
+import Configuration
 
-public struct WastebinRouter {
-    static func generateRouter() -> Router {
+public struct WastebinApp {
+    public let config: ConfigurationManager
+    static var dbCxn: SQLiteConnection? = nil
+    public init() {
+        // MARK: Configuration Initialization
+
+        config = ConfigurationManager()
+
+        // Initial config
+        config.load([
+            // Config file location
+            "config": "~/.wastebin.json",
+            // Template directory path (currently unused)
+            "template-path": nil,
+            // Database file path
+            "database-path": "~/Databases/wastebin.sqlite",
+            // IP port
+            "port": nil,
+            // Resource path (for CSS/JS files, etc)
+            "resource-path": "http://localhost:8081/",
+            // Maximum paste body size in chars
+            "max-size": 8192,
+            // Password for administration tasks
+            "password": nil
+            ])
+
+        // Load CLI arguments first because an overriding config file path may have been
+        // specified
+        config.load(.commandLineArguments)
+        if let configFileLoc = config["config"] as? String {
+            config.load(file: configFileLoc)
+            // Load CLI arguments again because we want those to override settings in the
+            // config file
+            config.load(.commandLineArguments)
+        }
+
+
+        // Initialize the database connection
+        guard let dbPath = config["database-path"] as? String else {
+            print("Failure opening database: Can't determine database file path")
+            exit(ExitCodes.noDatabaseFile.rawValue)
+        }
+
+        // Ensure a password is defined for admin tasks {
+        guard config["password"] != nil else {
+            print("Define an administration password!")
+            exit(ExitCodes.noPassword.rawValue)
+        }
+
+        let nsDbPath = NSString(string: dbPath).expandingTildeInPath
+        // Redundant type label below is required to avoid a segfault on compilation for
+        // some effing reason.
+        let expandedDbPath: String = String(nsDbPath)
+        WastebinApp.dbCxn = SQLiteConnection(filename: expandedDbPath)
+        WastebinApp.dbCxn?.connect() { error in
+            if let error = error {
+                print("Failure opening database: \(error.description)")
+                exit(ExitCodes.noDatabaseFile.rawValue)
+            }
+        }
+    }
+
+    public func generateRouter() -> Router {
+        // Hard code syntax mode info for now. Maybe do this in config later?
+        // There are certainly better data structures we could use for this, but this
+        // one works well for Stencil. Do better later, though.
+        let modes = [
+            ["sysname": "objectivec", "name": "Objective-C"],
+            ["sysname": "django", "name": "Django"],
+            ["sysname": "go", "name": "Go"],
+            ["sysname": "haskell", "name": "Haskell"],
+            ["sysname": "java", "name": "Java"],
+            ["sysname": "json", "name": "JSON"],
+            ["sysname": "markdown", "name": "Markdown"],
+            ["sysname": "_plain_", "name": "Plain"],
+            ["sysname": "perl", "name": "Perl"],
+            ["sysname": "php", "name": "PHP"],
+            ["sysname": "python", "name": "Python"],
+            ["sysname": "ruby", "name": "Ruby"],
+            ["sysname": "sql", "name": "SQL"],
+            ["sysname": "swift", "name": "Swift"],
+            ["sysname": "xml", "name": "XML"],
+            ]
+
+        // Default context array for Stencil
+        let defaultCtxt: [String: Any] = [
+            "modes": modes as Any,
+            "resourceDir": config["resource-path"] as? String as Any,
+            ]
+
         let r = Router()
         let ext = Extension()
         // I'd rather do sanitizing via a computed property on the Paste object, but
@@ -75,7 +166,7 @@ public struct WastebinRouter {
         r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
             // Gonna use "as!" here and not feel bad about it because we're
             // already checking if it's set in main.swift
-            let adminPassword = config["password"] as! String
+            let adminPassword = self.config["password"] as! String
             guard let postBody = request.body?.asURLEncodedMultiValue, let submittedPw = postBody["password"]?.first, submittedPw == adminPassword else {
                 try response.send(status: .forbidden).end()
                 next()
@@ -111,7 +202,7 @@ public struct WastebinRouter {
                 return
             }
 
-            guard let maxSize = config["max-size"] as? Int else {
+            guard let maxSize = self.config["max-size"] as? Int else {
                 try response.send(status: .internalServerError).end()
                 next()
                 return
@@ -187,7 +278,7 @@ public struct WastebinRouter {
         // Install database for a new site
         r.get("/install") { request, response, next in
             let pasteTable = PasteTable()
-            pasteTable.create(connection: dbCxn) { queryResult in
+            pasteTable.create(connection: WastebinApp.dbCxn!) { queryResult in
                 if queryResult.success {
                     response.headers.setType("text/plain", charset: "utf-8")
                     response.send("Created table \(pasteTable.tableName)\n")
