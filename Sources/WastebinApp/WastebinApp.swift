@@ -7,8 +7,10 @@ import SwiftKuery
 import Configuration
 
 public struct WastebinApp {
+
     public let config: ConfigurationManager
     static var dbCxn: SQLiteConnection? = nil
+
     public init() {
         // MARK: Configuration Initialization
 
