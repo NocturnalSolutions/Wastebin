@@ -12,7 +12,7 @@
 </div>
 {% endif %}
 
-<form action="new" method="post">
+<form action="new" method="post" enctype="multipart/form-data">
   <textarea name="body" rows="10" id="body">{{ paste.raw|default:"" }}</textarea>
   <select name="mode">
     {% for mode in modes %}

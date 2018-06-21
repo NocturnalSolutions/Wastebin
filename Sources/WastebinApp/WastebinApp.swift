@@ -131,14 +131,15 @@ public struct WastebinApp {
         // Store the regex for a UUID for later reference
         let uuidPattern = "[\\dA-F]{8}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{12}"
 
-        // Front page: Show a form for a new paste
+        // MARK: Front page
+        // Show a form for a new paste
         r.get("/") { request, response, next in
             response.headers.setType("text/html", charset: "utf-8")
             try response.render("new-paste", context: defaultCtxt)
             next()
         }
 
-        // Display a paste
+        // MARK: Display a paste
         r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
             guard let uuid = request.parameters["uuid"] else {
                 try response.send(status: .notFound).end()
@@ -163,7 +164,7 @@ public struct WastebinApp {
             next()
         }
 
-        // Delete a paste
+        // MARK: Delete a paste
         r.post("/:uuid(" + uuidPattern + ")/delete", middleware: BodyParserMultiValue())
         r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
             // Gonna use "as!" here and not feel bad about it because we're
@@ -195,10 +196,28 @@ public struct WastebinApp {
             next()
         }
 
-        // Submit handler for new paste
+        // MARK: Submit handler for new paste
         r.post("/new", middleware: BodyParserMultiValue())
         r.post("/new") { request, response, next in
-            guard let postBody = request.body?.asURLEncodedMultiValue, let body = postBody["body"]?.first, let postedMode = postBody["mode"]?.first else {
+            guard let postBody = request.body?.asMultiPart else {
+                try response.send(status: .unprocessableEntity).end()
+                next()
+                return
+            }
+
+            // Look for "body" and "mode" values
+            var postedBody: String?
+            var postedMode: String?
+            for part in postBody {
+                if part.name == "body" {
+                    postedBody = part.body.asText
+                }
+                else if part.name == "mode" {
+                    postedMode = part.body.asText
+                }
+            }
+
+            guard let bodyValue = postedBody, let modeValue = postedMode else {
                 try response.send(status: .unprocessableEntity).end()
                 next()
                 return
@@ -213,7 +232,7 @@ public struct WastebinApp {
             // Make sure the mode is legitimate
             var existsInModes = false
             for mode in modes {
-                if mode["sysname"] == postedMode {
+                if mode["sysname"] == modeValue {
                     existsInModes = true
                     break
                 }
@@ -225,9 +244,13 @@ public struct WastebinApp {
                 return
             }
 
-            let newPaste = Paste(raw: body, mode: postedMode)
+            let newPaste = Paste(raw: bodyValue, mode: modeValue)
 
-            let pasteBodySize = body.count
+            // Make sure the body's not too big. Note we create the new paste
+            // object before measuring this since it's easier to send that paste
+            // object, hoewver invalid it may be, back to the template layer so
+            // iut can be edited to something legit.
+            let pasteBodySize = bodyValue.count
             guard pasteBodySize <= maxSize else {
                 let context: [String: Any] = [
                     "paste": newPaste,
@@ -242,7 +265,7 @@ public struct WastebinApp {
 
             do {
                 try newPaste.save()
-                try response.redirect("/" + newPaste.uuid.uuidString)
+                try response.redirect("/" + newPaste.uuid.uuidString, status: .seeOther)
             }
             catch {
                 try response.send(status: .unprocessableEntity).end()
@@ -250,7 +273,7 @@ public struct WastebinApp {
             next()
         }
 
-        // List posts
+        // MARK: List pastes
         r.get("/list") { request, response, next in
             let page: Int
             if let pageStr = request.queryParametersMultiValues["page"]?.first {
@@ -277,7 +300,7 @@ public struct WastebinApp {
             try response.render("list", context: context.merging(defaultCtxt) { _, new in new })
         }
 
-        // Install database for a new site
+        // MARK: Install database for a new site
         r.get("/install") { request, response, next in
             let pasteTable = PasteTable()
             pasteTable.create(connection: WastebinApp.dbCxn!) { queryResult in
