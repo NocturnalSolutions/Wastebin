@@ -139,27 +139,18 @@ public struct WastebinApp {
             next()
         }
 
+        r.all("/:uuid(" + uuidPattern + ")", allowPartialMatch: true, middleware: PasteLoader())
+
         // MARK: Display a paste
         r.get("/:uuid(" + uuidPattern + ")") { request, response, next in
-            guard let uuid = request.parameters["uuid"] else {
-                try response.send(status: .notFound).end()
-                next()
-                return
-            }
-
             do {
-                let paste = try Paste.load(fromUuid: uuid)
+                let paste = request.userInfo["loadedPaste"] as! Paste
                 response.headers.setType("text/html", charset: "utf-8")
                 let context: [String: Any] = ["paste": paste]
                 try response.render("paste", context: context.merging(defaultCtxt) { _, new in new })
             }
             catch {
-                switch error {
-                case Paste.PasteError.notFoundForUuid:
-                    try response.send(status: .notFound).end()
-                default:
-                    try response.send(status: .internalServerError).end()
-                }
+                try response.send(status: .internalServerError).end()
             }
             next()
         }
@@ -175,23 +166,13 @@ public struct WastebinApp {
                 next()
                 return
             }
-            guard let uuid = request.parameters["uuid"] else {
-                try response.send(status: .notFound).end()
-                next()
-                return
-            }
             do {
-                let paste = try Paste.load(fromUuid: uuid)
+                let paste = request.userInfo["loadedPaste"] as! Paste
                 try paste.delete()
                 try response.redirect("/")
             }
             catch {
-                switch error {
-                case Paste.PasteError.notFoundForUuid:
-                    try response.send(status: .notFound).end()
-                default:
-                    try response.send(status: .internalServerError).end()
-                }
+                try response.send(status: .internalServerError).end()
             }
             next()
         }
