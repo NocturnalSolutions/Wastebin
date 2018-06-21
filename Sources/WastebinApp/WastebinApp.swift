@@ -52,6 +52,7 @@ public struct WastebinApp {
         }
 
         // Ensure a password is defined for admin tasks {
+        // TODO: This might be always passing on Linux for some reason…?
         guard config["password"] != nil else {
             print("Define an administration password!")
             exit(ExitCodes.noPassword.rawValue)

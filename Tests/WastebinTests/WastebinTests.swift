@@ -12,6 +12,7 @@ class WastebinTests: KituraTest {
     ]
 
     let multipartBoundary = "----QuickAndDirty"
+    let tempDbPath = "/tmp/wastebin-test.sqlite"
     let wastebin: WastebinApp = WastebinApp()
 
     private typealias BodyChecker =  (String) -> Void
@@ -21,10 +22,11 @@ class WastebinTests: KituraTest {
         let fileManager = FileManager.default
         //        let tempDir = fileManager.temporaryDirectory
         //        let dbFilePath = tempDir.appendingPathComponent("wastebin-test.sqlite")
-        let dbFilePath = URL(fileURLWithPath: "/tmp/wastebin-test.sqlite")
+        let dbFilePath = URL(fileURLWithPath: tempDbPath)
         try? fileManager.removeItem(at: dbFilePath)
 
-        wastebin.config["database-path"] = dbFilePath.absoluteString
+        wastebin.config["database-path"] = tempDbPath
+        wastebin.config["password"] = "wastebinTestPassword"
 
         wastebin.connectDb()
         wastebin.installDb()
