@@ -1,8 +1,9 @@
 import XCTest
 import Kitura
 import KituraNet
+import Foundation
 
-import Wastebin
+import WastebinApp
 
 class WastebinTests: KituraTest {
     static var allTests = [
@@ -11,9 +12,32 @@ class WastebinTests: KituraTest {
     ]
 
     let multipartBoundary = "----QuickAndDirty"
+    let wastebin: WastebinApp = WastebinApp()
 
     private typealias BodyChecker =  (String) -> Void
     private typealias ResponseChecker = (ClientResponse) -> Void
+
+    override func setUp() {
+        let fileManager = FileManager.default
+        //        let tempDir = fileManager.temporaryDirectory
+        //        let dbFilePath = tempDir.appendingPathComponent("wastebin-test.sqlite")
+        let dbFilePath = URL(fileURLWithPath: "/tmp/wastebin-test.sqlite")
+        try? fileManager.removeItem(at: dbFilePath)
+
+        wastebin.config["database-path"] = dbFilePath.absoluteString
+
+        wastebin.connectDb()
+        wastebin.installDb()
+        let router = wastebin.generateRouter()
+        Kitura.addHTTPServer(onPort: 8080, with: router)
+        Kitura.start()
+    }
+
+    override func tearDown() {
+        wastebin.disconnectDb()
+        Kitura.stop()
+    }
+
     private func checkResponse(response: ClientResponse, expectedResponseText: String? = nil,
                                expectedStatusCode: HTTPStatusCode = HTTPStatusCode.OK, bodyChecker: BodyChecker? = nil, responseChecker: ResponseChecker? = nil) {
         XCTAssertEqual(response.statusCode, expectedStatusCode,

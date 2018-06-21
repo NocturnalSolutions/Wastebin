@@ -20,7 +20,7 @@ import Kitura
 import KituraNet
 
 //import Dispatch
-//import Foundation
+import Foundation
 //
 //import KituraSampleRouter
 
@@ -41,11 +41,6 @@ class KituraTest: XCTestCase {
     public typealias RequestModifier = (ClientRequest) -> Void
 
     func performServerTest(asyncTasks: (XCTestExpectation) -> Void...) {
-        let wastebin = WastebinApp()
-
-        let router = wastebin.generateRouter()
-        Kitura.addHTTPServer(onPort: 8080, with: router)
-        Kitura.start()
 
         let requestQueue = DispatchQueue(label: "Request queue")
 
@@ -58,7 +53,6 @@ class KituraTest: XCTestCase {
 
         waitExpectation(timeout: 10) { error in
             // blocks test until request completes
-            Kitura.stop()
             XCTAssertNil(error)
         }
     }

@@ -45,8 +45,8 @@ public struct WastebinApp {
         }
 
 
-        // Initialize the database connection
-        guard let dbPath = config["database-path"] as? String else {
+        // Ensure we have a DB path
+        guard config["database-path"] != nil else {
             print("Failure opening database: Can't determine database file path")
             exit(ExitCodes.noDatabaseFile.rawValue)
         }
@@ -56,11 +56,13 @@ public struct WastebinApp {
             print("Define an administration password!")
             exit(ExitCodes.noPassword.rawValue)
         }
+    }
 
-        let nsDbPath = NSString(string: dbPath).expandingTildeInPath
+    public func connectDb() {
+        let nsDbPath = config["database-path"] as! NSString
         // Redundant type label below is required to avoid a segfault on compilation for
         // some effing reason.
-        let expandedDbPath: String = String(nsDbPath)
+        let expandedDbPath: String = String(nsDbPath.expandingTildeInPath)
         WastebinApp.dbCxn = SQLiteConnection(filename: expandedDbPath)
         WastebinApp.dbCxn?.connect() { error in
             if let error = error {
@@ -68,6 +70,19 @@ public struct WastebinApp {
                 exit(ExitCodes.noDatabaseFile.rawValue)
             }
         }
+    }
+
+    public func disconnectDb() {
+        WastebinApp.dbCxn!.closeConnection()
+    }
+
+    @discardableResult public func installDb() -> Bool {
+        let pasteTable = PasteTable()
+        var success: Bool?
+        pasteTable.create(connection: WastebinApp.dbCxn!) { queryResult in
+            success = queryResult.success
+        }
+        return success!
     }
 
     public func generateRouter() -> Router {
@@ -299,15 +314,12 @@ public struct WastebinApp {
 
         // MARK: Install database for a new site
         r.get("/install") { request, response, next in
-            let pasteTable = PasteTable()
-            pasteTable.create(connection: WastebinApp.dbCxn!) { queryResult in
-                if queryResult.success {
-                    response.headers.setType("text/plain", charset: "utf-8")
-                    response.send("Created table \(pasteTable.tableName)\n")
-                }
-                else {
-                    _ = response.send(status: .internalServerError)
-                }
+            if self.installDb() {
+                response.headers.setType("text/plain", charset: "utf-8")
+                response.send("Installation apparently succeeded")
+            }
+            else {
+                _ = response.send(status: .internalServerError)
             }
             next()
         }
