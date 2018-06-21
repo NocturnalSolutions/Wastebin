@@ -2,14 +2,24 @@ import Foundation
 import SwiftKuery
 
 /// Paste table
-class PasteTable: Table {
+class PasteTable_v0: Table {
     let tableName = "pastes"
     let uuid = Column("uuid", UUID.self, primaryKey: true)
     let date = Column("date", Varchar.self, length: 19)
     let raw = Column("raw", String.self)
     let mode = Column("mode", Varchar.self, length: 31)
-//    let body = Column("body", String.self)
 }
+
+class PasteTable_v1: Table {
+    var tableName = "pastes"
+    let uuid = Column("uuid", UUID.self, primaryKey: true)
+    let date = Column("date", Varchar.self, length: 19, notNull: true)
+    let raw = Column("raw", String.self, notNull: true)
+    let mode = Column("mode", Varchar.self, length: 31, notNull: true)
+    let forkOf = Column("fork_of", UUID.self, defaultValue: nil)
+}
+
+typealias PasteTable = PasteTable_v1
 
 /// Paste struct
 struct Paste {

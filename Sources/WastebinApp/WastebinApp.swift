@@ -312,6 +312,58 @@ public struct WastebinApp {
             next()
         }
 
+        // MARK: Schema updater
+        r.post("/upgrade/:version(\\d+)", middleware: adminCheck)
+        r.post("/upgrade/:version(\\d+)") { request, response, next in
+            switch request.parameters["version"] {
+            case "1":
+                // This is a horrific monstrosity, but it works and I'll know
+                // better what not to do next time (hint: don't bother trying to
+                // avoid raw SQL queries).
+                let t1 = PasteTable_v1()
+                var createSql = try! t1.description(connection: WastebinApp.dbCxn!)
+                createSql = createSql.replacingOccurrences(of: "CREATE TABLE \"\(t1.tableName)\" ", with: "CREATE TABLE \"\(t1.tableName)_temp\" ")
+
+                WastebinApp.dbCxn!.execute(createSql) { queryResult in
+                    if queryResult.success {
+                        let t0 = PasteTable_v0()
+                        let s = Select(t0.columns, from: t0)
+                        let i = Insert(into: t1, columns: t0.columns, s, returnID: false)
+                        var insertSql = try! i.build(queryBuilder: WastebinApp.dbCxn!.queryBuilder)
+                        insertSql = insertSql.replacingOccurrences(of: "INSERT INTO \"\(t1.tableName)\" ", with: "INSERT INTO \"\(t1.tableName)_temp\" ")
+                        WastebinApp.dbCxn!.execute(insertSql) { queryResult in
+                            if queryResult.success {
+                                t0.drop().execute(WastebinApp.dbCxn!) { queryResult in
+                                    if queryResult.success {
+                                        WastebinApp.dbCxn!.execute("ALTER TABLE \"\(t1.tableName)_temp\" RENAME TO \"\(t1.tableName)\"") { queryResult in
+                                            if queryResult.success {
+                                                response.send("It appears migration was successful.")
+                                            }
+                                            else if let error = queryResult.asError {
+                                                response.send("Error when renaming new table: \(error)")
+                                            }
+                                        }
+                                    }
+                                    else if let error = queryResult.asError {
+                                        response.send("Error when dropping temp table: \(error)")
+                                    }
+                                }
+                            }
+                            else if let error = queryResult.asError {
+                                response.send("Error when copying data to new table: \(error)")
+                            }
+                        }
+                    }
+                    else if let error = queryResult.asError {
+                        response.send("Error when creating new table: \(error)")
+                    }
+                }
+            default:
+                try! response.send(status: .notFound).end()
+            }
+            next()
+        }
+
         return r
     }
 }
