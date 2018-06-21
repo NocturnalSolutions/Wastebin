@@ -84,7 +84,7 @@ class WastebinTests: KituraTest {
             "mode": "_plain_",
         ]
 
-        var rawUrl: String = nil
+        var rawUrl: String? = nil
 
         let bc: BodyChecker = { body in
             XCTAssert(body.contains(post["body"]!), "Posted text not found on page")
@@ -93,9 +93,9 @@ class WastebinTests: KituraTest {
             let regex = try! NSRegularExpression(pattern: viewRawPattern, options: [])
             let matches = regex.matches(in: body, options: [], range: NSRange(location: 0, length: body.count))
             if let match = matches.first {
-                let nsRange = match.range(at: 1)
+                let nsRange = match.range(at: 0)
                 if let range = Range(nsRange, in: body) {
-                    rawUrl = body[range]
+                    rawUrl = String(body[range])
                 }
             }
             XCTAssertNotNil(rawUrl, "Can't find link to raw representation on paste page")
