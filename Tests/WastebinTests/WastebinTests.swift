@@ -84,12 +84,32 @@ class WastebinTests: KituraTest {
             "mode": "_plain_",
         ]
 
+        var rawUrl: String = nil
+
         let bc: BodyChecker = { body in
             XCTAssert(body.contains(post["body"]!), "Posted text not found on page")
             XCTAssert(body.contains("lang-\(post["mode"]!)"), "Posted mode not found on page")
+            let viewRawPattern = "/[\\dA-F]{8}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{12}/raw"
+            let regex = try! NSRegularExpression(pattern: viewRawPattern, options: [])
+            let matches = regex.matches(in: body, options: [], range: NSRange(location: 0, length: body.count))
+            if let match = matches.first {
+                let nsRange = match.range(at: 1)
+                if let range = Range(nsRange, in: body) {
+                    rawUrl = body[range]
+                }
+            }
+            XCTAssertNotNil(rawUrl, "Can't find link to raw representation on paste page")
         }
 
         runPostResponseTest(path: "/new", bodyChecker: bc, postBody: post)
+
+        if let rawUrl = rawUrl {
+            let rawBc: BodyChecker = {body in
+                XCTAssert(body.contains(post["body"]!), "Posted text not found on raw path")
+            }
+            runGetResponseTest(path: rawUrl, bodyChecker: rawBc)
+        }
+
     }
 
 }

@@ -8,7 +8,11 @@
 {{ paste.raw|webSanitize }}
 </code></pre>
 
-<form method="post" action="/{{ paste.uuid}}/delete">
+<div class="paste-ops" role="menu">
+  <a href="/{{ paste.uuid }}/raw">View Raw</a>
+</div>
+
+<form method="post" action="/{{ paste.uuid}}/delete" id="delete-form">
   <input type="password" name="password" />
   <input type="submit" value="Delete" />
 </form>

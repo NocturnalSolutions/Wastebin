@@ -155,6 +155,14 @@ public struct WastebinApp {
             next()
         }
 
+        // MARK: Raw view for a paste
+        r.get("/:uuid(" + uuidPattern + ")/raw") { request, response, next in
+            let paste = request.userInfo["loadedPaste"] as! Paste
+            response.headers.setType("text/plain", charset: "utf-8")
+            response.send(paste.raw)
+            next()
+        }
+
         // MARK: Delete a paste
         r.post("/:uuid(" + uuidPattern + ")/delete", middleware: BodyParserMultiValue())
         r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
