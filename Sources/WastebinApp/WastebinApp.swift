@@ -59,7 +59,9 @@ public struct WastebinApp {
     }
 
     public func connectDb() {
-        let nsDbPath = config["database-path"] as! NSString
+        // Can't cast directly to NSString on Linux, apparently
+        let dbPath = config["database-path"] as! String
+        let nsDbPath = NSString(string: dbPath)
         // Redundant type label below is required to avoid a segfault on compilation for
         // some effing reason.
         let expandedDbPath: String = String(nsDbPath.expandingTildeInPath)
