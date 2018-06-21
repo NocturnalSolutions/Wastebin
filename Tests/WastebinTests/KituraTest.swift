@@ -38,6 +38,8 @@ class KituraTest: XCTestCase {
 //    override func tearDown() {
 //    }
 
+    public typealias RequestModifier = (ClientRequest) -> Void
+
     func performServerTest(asyncTasks: (XCTestExpectation) -> Void...) {
         let wastebin = WastebinApp()
 
@@ -92,7 +94,7 @@ class KituraTest: XCTestCase {
 
     func performRequestSynchronous(_ method: String, path: String,  expectation: XCTestExpectation,
                         headers: [String: String]? = nil,
-                        requestModifier: ((ClientRequest) -> Void)? = nil,
+                        requestModifier: RequestModifier? = nil,
                         callback: @escaping (ClientResponse, DispatchGroup) -> Void) {
         let dispatchGroup = DispatchGroup()
         dispatchGroup.enter()
