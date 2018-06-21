@@ -131,6 +131,12 @@ public struct WastebinApp {
         // Store the regex for a UUID for later reference
         let uuidPattern = "[\\dA-F]{8}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{4}-[\\dA-F]{12}"
 
+        // Init admin checking middleware
+        let adminCheck = AdminCheck(adminPass: config["password"] as! String)
+
+        // Parse posts for all POST requests.
+        r.post(middleware: BodyParserMultiValue())
+
         // MARK: Front page
         // Show a form for a new paste
         r.get("/") { request, response, next in
@@ -139,6 +145,8 @@ public struct WastebinApp {
             next()
         }
 
+        // Add middleware to attempt to load the paste for all handlers that
+        // need one.
         r.all("/:uuid(" + uuidPattern + ")", allowPartialMatch: true, middleware: PasteLoader())
 
         // MARK: Display a paste
@@ -164,7 +172,7 @@ public struct WastebinApp {
         }
 
         // MARK: Delete a paste
-        r.post("/:uuid(" + uuidPattern + ")/delete", middleware: BodyParserMultiValue())
+        r.post("/:uuid(" + uuidPattern + ")/delete", middleware: adminCheck)
         r.post("/:uuid(" + uuidPattern + ")/delete") { request, response, next in
             // Gonna use "as!" here and not feel bad about it because we're
             // already checking if it's set in main.swift
