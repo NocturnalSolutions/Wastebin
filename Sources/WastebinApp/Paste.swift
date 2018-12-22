@@ -82,24 +82,22 @@ struct Paste {
     static func load(fromUuid uuidString: String) throws -> Paste {
         let pasteTable = PasteTable()
         let q = Select(fields: pasteTable.columns, from: [pasteTable])
-            .where(pasteTable.uuid == uuidString)
+            .where(pasteTable.uuid == Parameter("uuid"))
         var loadedPaste: Paste?
         var dbError: Error?
 
-        WastebinApp.dbCxn?.execute(query: q) { queryResult in
-            if let rows = queryResult.asRows, let row = rows.first {
-                do {
-                    let paste = try Paste(fromRow: row)
-                    loadedPaste = paste
-                }
-                catch {
-                    dbError = error
-                }
-            }
-            else if let error = queryResult.asError {
+        let queryResult = WastebinApp.dbCxn.executeSync(query: q, parameters: ["uuid": uuidString])
+        let semaphore = DispatchSemaphore(value: 0)
+        queryResult.asRows { rows, error in
+            if let error = error {
                 dbError = error
             }
+            else if let rows = rows, let row = rows.first {
+                loadedPaste = try? Paste(fromRow: row)
+            }
+            semaphore.signal()
         }
+        semaphore.wait()
 
         if let dbError = dbError {
             throw dbError
@@ -123,8 +121,10 @@ struct Paste {
         .limit(to: pastesPerListPage)
 
         var result: [Paste] = []
-        WastebinApp.dbCxn?.execute(query: q) { queryResult in
-            if let rows = queryResult.asRows {
+        let queryResult = WastebinApp.dbCxn.executeSync(query: q)
+        let semaphore = DispatchSemaphore(value: 0)
+        queryResult.asRows { rows, error in
+            if let rows = rows {
                 for row in rows {
                     do {
                         let paste = try Paste(fromRow: row)
@@ -135,7 +135,9 @@ struct Paste {
                     }
                 }
             }
+            semaphore.signal()
         }
+        semaphore.wait()
         return result
     }
 
@@ -144,14 +146,15 @@ struct Paste {
         let pasteTable = PasteTable()
         let q = Select(count(pasteTable.uuid).as("count"), from: pasteTable)
         var pasteCount = 0
-        WastebinApp.dbCxn?.execute(query: q) {queryResult in
-            // Awkward multi-level unwrapping
-            if let result = queryResult.asRows,
-                let row = result.first,
-                let value = row["count"],
-                let count = value
-            {
-                pasteCount = Int(String(describing: count)) ?? 0
+        let queryResult = WastebinApp.dbCxn.executeSync(query: q)
+        let semaphore = DispatchSemaphore(value: 0)
+        if let rs = queryResult.asResultSet {
+            semaphore.wait()
+            rs.nextRow { row, error in
+                if let row = row, let count = row.first {
+                    pasteCount = Int(String(describing: count!)) ?? 0
+                }
+                semaphore.signal()
             }
         }
         return pasteCount
@@ -170,11 +173,10 @@ struct Paste {
             (pasteTable.mode, mode)
         ])
         var dbError: Error?
-        WastebinApp.dbCxn?.execute(query: i) { queryResult in
+        let queryResult = WastebinApp.dbCxn.executeSync(query: i)
             if let error = queryResult.asError {
                 dbError = error
             }
-        }
 
         if let dbError = dbError {
             throw dbError
@@ -186,10 +188,9 @@ struct Paste {
         let d = Delete(from: pasteTable)
         .where(pasteTable.uuid == uuid.uuidString)
         var dbError: Error?
-        WastebinApp.dbCxn?.execute(query: d) { queryResult in
-            if let error = queryResult.asError {
-                dbError = error
-            }
+        let queryResult = WastebinApp.dbCxn.executeSync(query: d)
+        if let error = queryResult.asError {
+            dbError = error
         }
         if let dbError = dbError {
             throw dbError

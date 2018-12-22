@@ -8,10 +8,8 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/IBM-Swift/Kitura.git", from: "2.4.0"),
-        .package(url: "https://github.com/NocturnalSolutions/Swift-Kuery.git", .branch("escape-apostrophes")),
-        .package(url: "https://github.com/NocturnalSolutions/Kitura-net.git", .branch("ClientRequest-Redirection")),
-        .package(url: "https://github.com/IBM-Swift/Swift-Kuery-SQLite.git", from: "1.0.0"),
+        .package(url: "https://github.com/IBM-Swift/Kitura.git", from: "2.6.0"),
+        .package(url: "https://github.com/IBM-Swift/Swift-Kuery-SQLite.git", from: "2.0.0"),
         .package(url: "https://github.com/IBM-Swift/Kitura-StencilTemplateEngine.git", from: "1.9.1"),
         .package(url: "https://github.com/IBM-Swift/Configuration.git", from: "3.0.1"),
     ],

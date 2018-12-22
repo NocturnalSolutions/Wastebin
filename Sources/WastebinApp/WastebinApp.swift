@@ -5,11 +5,22 @@ import Stencil
 import SwiftKuerySQLite
 import SwiftKuery
 import Configuration
+import Dispatch
 
 public struct WastebinApp {
 
     public let config: ConfigurationManager
-    static var dbCxn: SQLiteConnection? = nil
+
+    // Obnoxious workaround because:
+    // 1. We won't have a database connection until connectDB() is called
+    // 2. Static vars must either have a default value or a getter
+    // 3. Doing `WastebinApp.dbCxn` is less obnoxious than `WastebinApp.dbCxn?`
+    static var dbCxn: SQLiteConnection {
+        get {
+            return _dbCxn!
+        }
+    }
+    static private var _dbCxn: SQLiteConnection?
 
     public init() {
         // MARK: Configuration Initialization
@@ -66,25 +77,27 @@ public struct WastebinApp {
         // Redundant type label below is required to avoid a segfault on compilation for
         // some effing reason.
         let expandedDbPath: String = String(nsDbPath.expandingTildeInPath)
-        WastebinApp.dbCxn = SQLiteConnection(filename: expandedDbPath)
-        WastebinApp.dbCxn?.connect() { error in
-            if let error = error {
-                print("Failure opening database: \(error.description)")
-                exit(ExitCodes.noDatabaseFile.rawValue)
-            }
+        WastebinApp._dbCxn = SQLiteConnection(filename: expandedDbPath)
+        let cxnState = WastebinApp.dbCxn.connectSync()
+        if let error = cxnState.asError {
+            print("Failure opening database: \(error.localizedDescription)")
+            exit(ExitCodes.noDatabaseFile.rawValue)
         }
     }
 
     public func disconnectDb() {
-        WastebinApp.dbCxn!.closeConnection()
+        WastebinApp.dbCxn.closeConnection()
     }
 
     @discardableResult public func installDb() -> Bool {
         let pasteTable = PasteTable()
         var success: Bool?
-        pasteTable.create(connection: WastebinApp.dbCxn!) { queryResult in
+        let semaphore = DispatchSemaphore(value: 0)
+        pasteTable.create(connection: WastebinApp.dbCxn) { queryResult in
             success = queryResult.success
+            semaphore.signal()
         }
+        semaphore.wait()
         return success!
     }
 
@@ -336,21 +349,21 @@ public struct WastebinApp {
                 // better what not to do next time (hint: don't bother trying to
                 // avoid raw SQL queries).
                 let t1 = PasteTable_v1()
-                var createSql = try! t1.description(connection: WastebinApp.dbCxn!)
+                var createSql = try! t1.description(connection: WastebinApp.dbCxn)
                 createSql = createSql.replacingOccurrences(of: "CREATE TABLE \"\(t1.tableName)\" ", with: "CREATE TABLE \"\(t1.tableName)_temp\" ")
 
-                WastebinApp.dbCxn!.execute(createSql) { queryResult in
+                WastebinApp.dbCxn.execute(createSql) { queryResult in
                     if queryResult.success {
                         let t0 = PasteTable_v0()
                         let s = Select(t0.columns, from: t0)
                         let i = Insert(into: t1, columns: t0.columns, s, returnID: false)
-                        var insertSql = try! i.build(queryBuilder: WastebinApp.dbCxn!.queryBuilder)
+                        var insertSql = try! i.build(queryBuilder: WastebinApp.dbCxn.queryBuilder)
                         insertSql = insertSql.replacingOccurrences(of: "INSERT INTO \"\(t1.tableName)\" ", with: "INSERT INTO \"\(t1.tableName)_temp\" ")
-                        WastebinApp.dbCxn!.execute(insertSql) { queryResult in
+                        WastebinApp.dbCxn.execute(insertSql) { queryResult in
                             if queryResult.success {
-                                t0.drop().execute(WastebinApp.dbCxn!) { queryResult in
+                                t0.drop().execute(WastebinApp.dbCxn) { queryResult in
                                     if queryResult.success {
-                                        WastebinApp.dbCxn!.execute("ALTER TABLE \"\(t1.tableName)_temp\" RENAME TO \"\(t1.tableName)\"") { queryResult in
+                                        WastebinApp.dbCxn.execute("ALTER TABLE \"\(t1.tableName)_temp\" RENAME TO \"\(t1.tableName)\"") { queryResult in
                                             if queryResult.success {
                                                 response.send("It appears migration was successful.")
                                             }

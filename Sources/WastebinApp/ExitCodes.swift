@@ -3,4 +3,5 @@ enum ExitCodes: Int32 {
     // rearrange them.
     case noDatabaseFile = 1
     case noPassword = 2
+    case dbCxnFailed = 3
 }
